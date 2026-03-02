@@ -49,7 +49,8 @@ async function startServer() {
   const app = express();
   const PORT = 3000;
 
-  app.use(express.json());
+  app.use(express.json({ limit: '10mb' }));
+  app.use(express.urlencoded({ limit: '10mb', extended: true }));
 
   // API Routes
   
@@ -90,6 +91,24 @@ async function startServer() {
       res.json({ id: info.lastInsertRowid });
     } catch (error) {
       console.error("Error adding product:", error);
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  app.put("/api/products/:id", (req, res) => {
+    try {
+      const { name, description, price, cost_price, image_url, category, stock } = req.body;
+      const { id } = req.params;
+
+      db.prepare(`
+        UPDATE products 
+        SET name = ?, description = ?, price = ?, cost_price = ?, image_url = ?, category = ?, stock = ?
+        WHERE id = ?
+      `).run(name, description, price, cost_price, image_url, category, stock, id);
+
+      res.json({ success: true });
+    } catch (error) {
+      console.error("Error updating product:", error);
       res.status(500).json({ error: error.message });
     }
   });
@@ -172,10 +191,15 @@ async function startServer() {
     `).get();
 
     const recentSales = db.prepare(`
-      SELECT date(created_at) as date, SUM(total_amount) as amount
-      FROM orders
-      WHERE status = 'delivered'
-      GROUP BY date(created_at)
+      SELECT 
+        date(o.created_at) as date,
+        COUNT(DISTINCT o.id) as orders_count,
+        SUM(oi.quantity * oi.price_at_purchase) as sales_amount,
+        SUM(oi.quantity * (oi.price_at_purchase - oi.cost_at_purchase)) as profit_amount
+      FROM orders o
+      JOIN order_items oi ON o.id = oi.order_id
+      WHERE o.status = 'delivered'
+      GROUP BY date(o.created_at)
       ORDER BY date DESC
       LIMIT 7
     `).all();
