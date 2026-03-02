@@ -182,6 +182,35 @@ const AdminLogin = ({ onLogin, onCancel }: { onLogin: (pw: string) => Promise<bo
   );
 };
 
+// --- Constants ---
+
+const BANGLADESH_DATA: Record<string, string[]> = {
+  "Dhaka": ["Dhanmondi", "Gulshan", "Banani", "Mirpur", "Uttara", "Mohammadpur", "Motijheel", "Tejgaon", "Badda", "Khilgaon", "Savar", "Keraniganj", "Dhamrai", "Nawabganj", "Dohar"],
+  "Chittagong": ["Panchlaish", "Double Mooring", "Kotwali", "Bakalia", "Halishahar", "Pahartali", "Bandar", "Chandgaon", "Patenga", "Hathazari", "Sitakunda", "Patiya", "Raozan", "Fatikchhari"],
+  "Sylhet": ["Kotwali", "Shahporan", "South Surma", "Osmani Nagar", "Bishwanath", "Fenchuganj", "Balaganj", "Golapganj", "Beani Bazar", "Zakiganj", "Kanaighat", "Jaintiapur"],
+  "Rajshahi": ["Boalia", "Rajput", "Motihar", "Shah Mokhdum", "Paba", "Godagari", "Tanore", "Bagmara", "Durgapur", "Putia", "Charghat", "Mohanpur"],
+  "Khulna": ["Khulna Sadar", "Sonadanga", "Khalishpur", "Daulatpur", "Khan Jahan Ali", "Batiaghata", "Dacope", "Dumuria", "Paikgachha", "Phultala", "Rupsha", "Terokhada"],
+  "Barisal": ["Barisal Sadar", "Bakerganj", "Babuganj", "Banaripara", "Gournadi", "Hizla", "Mehendiganj", "Muladi", "Wazirpur", "Agailjhara"],
+  "Rangpur": ["Rangpur Sadar", "Badarganj", "Gangachara", "Kaunia", "Mithapukur", "Pirgachha", "Pirganj", "Taraganj"],
+  "Mymensingh": ["Mymensingh Sadar", "Muktagachha", "Fulbaria", "Trishal", "Bhaluka", "Gaffargaon", "Nandail", "Ishwarganj", "Haluaghat", "Dhobaura", "Phulpur", "Tara Khanda"],
+  "Gazipur": ["Gazipur Sadar", "Kaliakair", "Kaliganj", "Kapasia", "Sreepur", "Tongi"],
+  "Narayanganj": ["Narayanganj Sadar", "Bandar", "Fatullah", "Siddhirganj", "Araihazar", "Sonargaon", "Rupganj"],
+  "Comilla": ["Comilla Sadar", "Barura", "Brahmanpara", "Burichang", "Chandina", "Chauddagram", "Daudkandi", "Debidwar", "Homna", "Laksam", "Muradnagar", "Nangalkot", "Titas"],
+  "Brahmanbaria": ["Brahmanbaria Sadar", "Ashuganj", "Bancharampur", "Kasba", "Nabinagar", "Nasirnagar", "Sarail", "Akhaura", "Bijoynagar"],
+  "Noakhali": ["Noakhali Sadar", "Begumganj", "Chatkhil", "Companiganj", "Hatiya", "Senbagh", "Sonaimuri", "Subarnachar", "Kabirhat"],
+  "Feni": ["Feni Sadar", "Chhagalnaiya", "Daganbhuiyan", "Parshuram", "Sonagazi", "Fulgazi"],
+  "Bogura": ["Bogura Sadar", "Adamdighi", "Dhunat", "Dhupchanchia", "Gabtali", "Kahaloo", "Nandigram", "Sariakandi", "Sherpur", "Shajahanpur", "Sonatola", "Shibganj"],
+  "Dinajpur": ["Dinajpur Sadar", "Birganj", "Biral", "Bochaganj", "Chirirbandar", "Phulbari", "Ghoraghat", "Hakimpur", "Kaharole", "Khansama", "Nawabganj", "Parbatipur"],
+  "Jessore": ["Jessore Sadar", "Abhaynagar", "Bagherpara", "Chaugachha", "Jhikargachha", "Keshabpur", "Manirampur", "Sharsha"],
+  "Kushtia": ["Kushtia Sadar", "Kumarkhali", "Khoksa", "Mirpur", "Daulatpur", "Bheramara"],
+  "Pabna": ["Pabna Sadar", "Atgharia", "Bera", "Bhangura", "Chatmohar", "Faridpur", "Ishwardi", "Santhia", "Sujanagar"],
+  "Tangail": ["Tangail Sadar", "Basail", "Bhuapur", "Delduar", "Ghatail", "Gopalpur", "Kalihati", "Madhupur", "Mirzapur", "Nagarpur", "Sakhipur", "Dhanbari"],
+  "Cox's Bazar": ["Cox's Bazar Sadar", "Chakaria", "Kutubdia", "Maheshkhali", "Ramu", "Teknaf", "Ukhia", "Pekua"],
+  "Sunamganj": ["Sunamganj Sadar", "Bishwamvampur", "Chhatak", "Derai", "Dharampasha", "Dowarabazar", "Jagannathpur", "Jamalganj", "Sullah", "Tahirpur", "South Sunamganj"],
+  "Habiganj": ["Habiganj Sadar", "Ajmiriganj", "Bahubal", "Baniyachong", "Chunarughat", "Lakhai", "Madhabpur", "Nabiganj", "Sayestaganj"],
+  "Moulvibazar": ["Moulvibazar Sadar", "Barlekha", "Kamalganj", "Kulaura", "Rajnagar", "Sreemangal", "Juri"],
+};
+
 const AdminDashboard = () => {
   const [products, setProducts] = useState<Product[]>([]);
   const [orders, setOrders] = useState<Order[]>([]);
@@ -916,7 +945,13 @@ const CartModal = ({ isOpen, onClose, cart, setCart, onUpdateQuantity }: {
   onUpdateQuantity: (id: number, delta: number) => void;
 }) => {
   const [step, setStep] = useState<'cart' | 'checkout' | 'success'>('cart');
-  const [customerInfo, setCustomerInfo] = useState({ name: '', phone: '', address: '' });
+  const [customerInfo, setCustomerInfo] = useState({ 
+    name: '', 
+    phone: '', 
+    district: '', 
+    thana: '', 
+    localAddress: '' 
+  });
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const total = cart.reduce((sum, item) => sum + item.product.price * item.quantity, 0);
@@ -925,10 +960,12 @@ const CartModal = ({ isOpen, onClose, cart, setCart, onUpdateQuantity }: {
     e.preventDefault();
     setIsSubmitting(true);
     
+    const fullAddress = `${customerInfo.localAddress}, ${customerInfo.thana}, ${customerInfo.district}`;
+    
     const orderData = {
       customer_name: customerInfo.name,
       customer_phone: customerInfo.phone,
-      customer_address: customerInfo.address,
+      customer_address: fullAddress,
       items: cart.map(item => ({
         product_id: item.product.id,
         quantity: item.quantity
@@ -1070,12 +1107,42 @@ const CartModal = ({ isOpen, onClose, cart, setCart, onUpdateQuantity }: {
                   />
                 </div>
                 <div>
-                  <label className="block text-xs font-bold text-zinc-400 uppercase mb-1">Delivery Address</label>
+                  <label className="block text-xs font-bold text-zinc-400 uppercase mb-1">District (জেলা)</label>
+                  <select 
+                    required
+                    className="w-full px-4 py-3 bg-zinc-50 border border-zinc-100 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500/20 transition-all appearance-none"
+                    value={customerInfo.district}
+                    onChange={e => setCustomerInfo({...customerInfo, district: e.target.value, thana: ''})}
+                  >
+                    <option value="">Select District</option>
+                    {Object.keys(BANGLADESH_DATA).sort().map(district => (
+                      <option key={district} value={district}>{district}</option>
+                    ))}
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-xs font-bold text-zinc-400 uppercase mb-1">Thana/Upazila (থানা)</label>
+                  <select 
+                    required
+                    disabled={!customerInfo.district}
+                    className="w-full px-4 py-3 bg-zinc-50 border border-zinc-100 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500/20 transition-all appearance-none disabled:opacity-50"
+                    value={customerInfo.thana}
+                    onChange={e => setCustomerInfo({...customerInfo, thana: e.target.value})}
+                  >
+                    <option value="">Select Thana</option>
+                    {customerInfo.district && BANGLADESH_DATA[customerInfo.district].sort().map(thana => (
+                      <option key={thana} value={thana}>{thana}</option>
+                    ))}
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-xs font-bold text-zinc-400 uppercase mb-1">Local Address (বাসা/রোড/এলাকা)</label>
                   <textarea 
-                    required rows={3}
+                    required rows={2}
+                    placeholder="House no, Road no, Area details..."
                     className="w-full px-4 py-3 bg-zinc-50 border border-zinc-100 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500/20 transition-all resize-none"
-                    value={customerInfo.address}
-                    onChange={e => setCustomerInfo({...customerInfo, address: e.target.value})}
+                    value={customerInfo.localAddress}
+                    onChange={e => setCustomerInfo({...customerInfo, localAddress: e.target.value})}
                   />
                 </div>
               </div>
