@@ -113,25 +113,42 @@ const AdminDashboard = () => {
   }, []);
 
   const fetchData = async () => {
-    const [pRes, oRes, aRes] = await Promise.all([
-      fetch('/api/products'),
-      fetch('/api/orders'),
-      fetch('/api/analytics')
-    ]);
-    setProducts(await pRes.json());
-    setOrders(await oRes.json());
-    setAnalytics(await aRes.json());
+    try {
+      const [pRes, oRes, aRes] = await Promise.all([
+        fetch('/api/products'),
+        fetch('/api/orders'),
+        fetch('/api/analytics')
+      ]);
+      
+      if (pRes.ok) setProducts(await pRes.json());
+      if (oRes.ok) setOrders(await oRes.json());
+      if (aRes.ok) setAnalytics(await aRes.json());
+    } catch (error) {
+      console.error("Error fetching data:", error);
+    }
   };
 
   const handleAddProduct = async (e: React.FormEvent) => {
     e.preventDefault();
-    await fetch('/api/products', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(newProduct)
-    });
-    setNewProduct({ name: '', description: '', price: 0, cost_price: 0, image_url: '', category: '', stock: 0 });
-    fetchData();
+    try {
+      const response = await fetch('/api/products', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(newProduct)
+      });
+      
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Failed to add product');
+      }
+
+      setNewProduct({ name: '', description: '', price: 0, cost_price: 0, image_url: '', category: '', stock: 0 });
+      await fetchData();
+      alert('Product added successfully!');
+    } catch (error: any) {
+      console.error('Error adding product:', error);
+      alert('Error: ' + error.message);
+    }
   };
 
   const handleDeleteProduct = async (id: number) => {
@@ -240,8 +257,8 @@ const AdminDashboard = () => {
                     <input 
                       type="number" required
                       className="w-full px-4 py-3 bg-zinc-50 border border-zinc-100 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500/20 transition-all"
-                      value={newProduct.price || ''}
-                      onChange={e => setNewProduct({...newProduct, price: parseFloat(e.target.value)})}
+                      value={newProduct.price}
+                      onChange={e => setNewProduct({...newProduct, price: parseFloat(e.target.value) || 0})}
                     />
                   </div>
                   <div>
@@ -249,8 +266,8 @@ const AdminDashboard = () => {
                     <input 
                       type="number" required
                       className="w-full px-4 py-3 bg-zinc-50 border border-zinc-100 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500/20 transition-all"
-                      value={newProduct.cost_price || ''}
-                      onChange={e => setNewProduct({...newProduct, cost_price: parseFloat(e.target.value)})}
+                      value={newProduct.cost_price}
+                      onChange={e => setNewProduct({...newProduct, cost_price: parseFloat(e.target.value) || 0})}
                     />
                   </div>
                 </div>
@@ -259,8 +276,8 @@ const AdminDashboard = () => {
                   <input 
                     type="number" required
                     className="w-full px-4 py-3 bg-zinc-50 border border-zinc-100 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500/20 transition-all"
-                    value={newProduct.stock || ''}
-                    onChange={e => setNewProduct({...newProduct, stock: parseInt(e.target.value)})}
+                    value={newProduct.stock}
+                    onChange={e => setNewProduct({...newProduct, stock: parseInt(e.target.value) || 0})}
                   />
                 </div>
                 <div>

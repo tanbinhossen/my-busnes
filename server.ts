@@ -55,17 +55,43 @@ async function startServer() {
   
   // Products
   app.get("/api/products", (req, res) => {
-    const products = db.prepare("SELECT * FROM products ORDER BY created_at DESC").all();
-    res.json(products);
+    try {
+      const products = db.prepare("SELECT * FROM products ORDER BY created_at DESC").all();
+      res.json(products);
+    } catch (error) {
+      console.error("Error fetching products:", error);
+      res.status(500).json({ error: error.message });
+    }
   });
 
   app.post("/api/products", (req, res) => {
-    const { name, description, price, cost_price, image_url, category, stock } = req.body;
-    const info = db.prepare(`
-      INSERT INTO products (name, description, price, cost_price, image_url, category, stock)
-      VALUES (?, ?, ?, ?, ?, ?, ?)
-    `).run(name, description, price, cost_price, image_url, category, stock);
-    res.json({ id: info.lastInsertRowid });
+    try {
+      const { name, description, price, cost_price, image_url, category, stock } = req.body;
+      console.log("Adding product:", req.body);
+      
+      if (!name || price === undefined || cost_price === undefined) {
+        return res.status(400).json({ error: "Name, price, and cost price are required" });
+      }
+
+      const info = db.prepare(`
+        INSERT INTO products (name, description, price, cost_price, image_url, category, stock)
+        VALUES (?, ?, ?, ?, ?, ?, ?)
+      `).run(
+        name, 
+        description || "", 
+        price, 
+        cost_price, 
+        image_url || "", 
+        category || "", 
+        stock || 0
+      );
+      
+      console.log("Product added with ID:", info.lastInsertRowid);
+      res.json({ id: info.lastInsertRowid });
+    } catch (error) {
+      console.error("Error adding product:", error);
+      res.status(500).json({ error: error.message });
+    }
   });
 
   app.delete("/api/products/:id", (req, res) => {
