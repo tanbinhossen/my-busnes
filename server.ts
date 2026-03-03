@@ -1,49 +1,19 @@
 import express from "express";
 import { createServer as createViteServer } from "vite";
-import Database from "better-sqlite3";
 import path from "path";
 import { fileURLToPath } from "url";
+import { createClient } from "@supabase/supabase-js";
+import dotenv from "dotenv";
+
+dotenv.config();
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-const db = new Database("logeachi.db");
-
-// Initialize Database
-db.exec(`
-  CREATE TABLE IF NOT EXISTS products (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    name TEXT NOT NULL,
-    description TEXT,
-    price REAL NOT NULL,
-    cost_price REAL NOT NULL,
-    image_url TEXT,
-    category TEXT,
-    stock INTEGER DEFAULT 0,
-    created_at DATETIME DEFAULT CURRENT_TIMESTAMP
-  );
-
-  CREATE TABLE IF NOT EXISTS orders (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    customer_name TEXT NOT NULL,
-    customer_phone TEXT NOT NULL,
-    customer_address TEXT NOT NULL,
-    total_amount REAL NOT NULL,
-    status TEXT DEFAULT 'pending', -- pending, confirmed, delivered, cancelled
-    created_at DATETIME DEFAULT CURRENT_TIMESTAMP
-  );
-
-  CREATE TABLE IF NOT EXISTS order_items (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    order_id INTEGER,
-    product_id INTEGER,
-    quantity INTEGER,
-    price_at_purchase REAL,
-    cost_at_purchase REAL,
-    FOREIGN KEY (order_id) REFERENCES orders(id),
-    FOREIGN KEY (product_id) REFERENCES products(id)
-  );
-`);
+// Supabase Configuration
+const supabaseUrl = process.env.SUPABASE_URL || "";
+const supabaseKey = process.env.SUPABASE_ANON_KEY || "";
+const supabase = createClient(supabaseUrl, supabaseKey);
 
 async function startServer() {
   const app = express();
@@ -55,57 +25,61 @@ async function startServer() {
   // API Routes
   
   // Products
-  app.get("/api/products", (req, res) => {
+  app.get("/api/products", async (req, res) => {
     try {
-      const products = db.prepare("SELECT * FROM products ORDER BY created_at DESC").all();
-      res.json(products);
+      const { data, error } = await supabase
+        .from("products")
+        .select("*")
+        .order("created_at", { ascending: false });
+      
+      if (error) throw error;
+      res.json(data);
     } catch (error) {
       console.error("Error fetching products:", error);
       res.status(500).json({ error: error.message });
     }
   });
 
-  app.post("/api/products", (req, res) => {
+  app.post("/api/products", async (req, res) => {
     try {
       const { name, description, price, cost_price, image_url, category, stock } = req.body;
-      console.log("Adding product:", req.body);
       
       if (!name || price === undefined || cost_price === undefined) {
         return res.status(400).json({ error: "Name, price, and cost price are required" });
       }
 
-      const info = db.prepare(`
-        INSERT INTO products (name, description, price, cost_price, image_url, category, stock)
-        VALUES (?, ?, ?, ?, ?, ?, ?)
-      `).run(
-        name, 
-        description || "", 
-        price, 
-        cost_price, 
-        image_url || "", 
-        category || "", 
-        stock || 0
-      );
+      const { data, error } = await supabase
+        .from("products")
+        .insert([{ 
+          name, 
+          description: description || "", 
+          price, 
+          cost_price, 
+          image_url: image_url || "", 
+          category: category || "", 
+          stock: stock || 0 
+        }])
+        .select();
       
-      console.log("Product added with ID:", info.lastInsertRowid);
-      res.json({ id: info.lastInsertRowid });
+      if (error) throw error;
+      res.json({ id: data[0].id });
     } catch (error) {
       console.error("Error adding product:", error);
       res.status(500).json({ error: error.message });
     }
   });
 
-  app.put("/api/products/:id", (req, res) => {
+  app.put("/api/products/:id", async (req, res) => {
     try {
       const { name, description, price, cost_price, image_url, category, stock } = req.body;
       const { id } = req.params;
 
-      db.prepare(`
-        UPDATE products 
-        SET name = ?, description = ?, price = ?, cost_price = ?, image_url = ?, category = ?, stock = ?
-        WHERE id = ?
-      `).run(name, description, price, cost_price, image_url, category, stock, id);
+      const { error } = await supabase
+        .from("products")
+        .update({ name, description, price, cost_price, image_url, category, stock })
+        .eq("id", id);
 
+      if (error) throw error;
       res.json({ success: true });
     } catch (error) {
       console.error("Error updating product:", error);
@@ -113,103 +87,167 @@ async function startServer() {
     }
   });
 
-  app.delete("/api/products/:id", (req, res) => {
-    db.prepare("DELETE FROM products WHERE id = ?").run(req.params.id);
-    res.json({ success: true });
-  });
-
-  // Orders
-  app.get("/api/orders", (req, res) => {
-    const orders = db.prepare("SELECT * FROM orders ORDER BY created_at DESC").all();
-    // For each order, get items
-    const ordersWithItems = orders.map(order => {
-      const items = db.prepare(`
-        SELECT oi.*, p.name as product_name 
-        FROM order_items oi 
-        JOIN products p ON oi.product_id = p.id 
-        WHERE oi.order_id = ?
-      `).all(order.id);
-      return { ...order, items };
-    });
-    res.json(ordersWithItems);
-  });
-
-  app.post("/api/orders", (req, res) => {
-    const { customer_name, customer_phone, customer_address, items } = req.body;
-    
-    const transaction = db.transaction(() => {
-      let total_amount = 0;
-      items.forEach(item => {
-        const product = db.prepare("SELECT price FROM products WHERE id = ?").get(item.product_id);
-        total_amount += product.price * item.quantity;
-      });
-
-      const orderInfo = db.prepare(`
-        INSERT INTO orders (customer_name, customer_phone, customer_address, total_amount)
-        VALUES (?, ?, ?, ?)
-      `).run(customer_name, customer_phone, customer_address, total_amount);
-
-      const orderId = orderInfo.lastInsertRowid;
-
-      items.forEach(item => {
-        const product = db.prepare("SELECT price, cost_price FROM products WHERE id = ?").get(item.product_id);
-        db.prepare(`
-          INSERT INTO order_items (order_id, product_id, quantity, price_at_purchase, cost_at_purchase)
-          VALUES (?, ?, ?, ?, ?)
-        `).run(orderId, item.product_id, item.quantity, product.price, product.cost_price);
-        
-        // Update stock
-        db.prepare("UPDATE products SET stock = stock - ? WHERE id = ?").run(item.quantity, item.product_id);
-      });
-
-      return orderId;
-    });
-
+  app.delete("/api/products/:id", async (req, res) => {
     try {
-      const orderId = transaction();
-      res.json({ id: orderId });
+      const { error } = await supabase
+        .from("products")
+        .delete()
+        .eq("id", req.params.id);
+      
+      if (error) throw error;
+      res.json({ success: true });
     } catch (error) {
       res.status(500).json({ error: error.message });
     }
   });
 
-  app.put("/api/orders/:id/status", (req, res) => {
+  // Orders
+  app.get("/api/orders", async (req, res) => {
+    try {
+      const { data: orders, error: orderError } = await supabase
+        .from("orders")
+        .select("*, order_items(*, products(name))")
+        .order("created_at", { ascending: false });
+
+      if (orderError) throw orderError;
+
+      // Transform data to match frontend expectations
+      const formattedOrders = orders.map(order => ({
+        ...order,
+        items: order.order_items.map(item => ({
+          ...item,
+          product_name: item.products?.name || "Unknown Product"
+        }))
+      }));
+
+      res.json(formattedOrders);
+    } catch (error) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  app.post("/api/orders", async (req, res) => {
+    const { customer_name, customer_phone, customer_address, items } = req.body;
+    
+    try {
+      // 1. Calculate total and get product details
+      let total_amount = 0;
+      const productIds = items.map(i => i.product_id);
+      const { data: products, error: pError } = await supabase
+        .from("products")
+        .select("id, price, cost_price, stock")
+        .in("id", productIds);
+
+      if (pError) throw pError;
+
+      const productMap = new Map(products.map(p => [p.id, p]));
+      
+      items.forEach(item => {
+        const p = productMap.get(item.product_id);
+        if (p) total_amount += p.price * item.quantity;
+      });
+
+      // 2. Create Order
+      const { data: orderData, error: orderError } = await supabase
+        .from("orders")
+        .insert([{ customer_name, customer_phone, customer_address, total_amount }])
+        .select();
+
+      if (orderError) throw orderError;
+      const orderId = orderData[0].id;
+
+      // 3. Create Order Items & Update Stock
+      const orderItems = items.map(item => {
+        const p = productMap.get(item.product_id);
+        return {
+          order_id: orderId,
+          product_id: item.product_id,
+          quantity: item.quantity,
+          price_at_purchase: p?.price || 0,
+          cost_at_purchase: p?.cost_price || 0
+        };
+      });
+
+      const { error: itemsError } = await supabase.from("order_items").insert(orderItems);
+      if (itemsError) throw itemsError;
+
+      // Update stock for each product
+      for (const item of items) {
+        const p = productMap.get(item.product_id);
+        if (p) {
+          await supabase
+            .from("products")
+            .update({ stock: p.stock - item.quantity })
+            .eq("id", item.product_id);
+        }
+      }
+
+      res.json({ id: orderId });
+    } catch (error) {
+      console.error("Order error:", error);
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  app.put("/api/orders/:id/status", async (req, res) => {
     const { status } = req.body;
-    db.prepare("UPDATE orders SET status = ? WHERE id = ?").run(status, req.params.id);
-    res.json({ success: true });
+    try {
+      const { error } = await supabase
+        .from("orders")
+        .update({ status })
+        .eq("id", req.params.id);
+      
+      if (error) throw error;
+      res.json({ success: true });
+    } catch (error) {
+      res.status(500).json({ error: error.message });
+    }
   });
 
   // Analytics
-  app.get("/api/analytics", (req, res) => {
-    const stats = db.prepare(`
-      SELECT 
-        SUM(total_amount) as total_sales,
-        COUNT(id) as total_orders,
-        (SELECT SUM(quantity * (price_at_purchase - cost_at_purchase)) FROM order_items JOIN orders ON order_items.order_id = orders.id WHERE orders.status = 'delivered') as total_profit
-      FROM orders
-      WHERE status = 'delivered'
-    `).get();
+  app.get("/api/analytics", async (req, res) => {
+    try {
+      // Get all delivered orders
+      const { data: orders, error: oError } = await supabase
+        .from("orders")
+        .select("total_amount, created_at, order_items(quantity, price_at_purchase, cost_at_purchase)")
+        .eq("status", "delivered");
 
-    const recentSales = db.prepare(`
-      SELECT 
-        date(o.created_at) as date,
-        COUNT(DISTINCT o.id) as orders_count,
-        SUM(oi.quantity * oi.price_at_purchase) as sales_amount,
-        SUM(oi.quantity * (oi.price_at_purchase - oi.cost_at_purchase)) as profit_amount
-      FROM orders o
-      JOIN order_items oi ON o.id = oi.order_id
-      WHERE o.status = 'delivered'
-      GROUP BY date(o.created_at)
-      ORDER BY date DESC
-      LIMIT 7
-    `).all();
+      if (oError) throw oError;
 
-    res.json({
-      total_sales: stats.total_sales || 0,
-      total_orders: stats.total_orders || 0,
-      total_profit: stats.total_profit || 0,
-      recentSales
-    });
+      let total_sales = 0;
+      let total_profit = 0;
+      const salesByDate = new Map();
+
+      orders.forEach(order => {
+        total_sales += order.total_amount;
+        let orderProfit = 0;
+        order.order_items.forEach(item => {
+          orderProfit += item.quantity * (item.price_at_purchase - item.cost_at_purchase);
+        });
+        total_profit += orderProfit;
+
+        const date = new Date(order.created_at).toISOString().split('T')[0];
+        const existing = salesByDate.get(date) || { date, orders_count: 0, sales_amount: 0, profit_amount: 0 };
+        existing.orders_count += 1;
+        existing.sales_amount += order.total_amount;
+        existing.profit_amount += orderProfit;
+        salesByDate.set(date, existing);
+      });
+
+      const recentSales = Array.from(salesByDate.values())
+        .sort((a, b) => b.date.localeCompare(a.date))
+        .slice(0, 7);
+
+      res.json({
+        total_sales,
+        total_orders: orders.length,
+        total_profit,
+        recentSales
+      });
+    } catch (error) {
+      res.status(500).json({ error: error.message });
+    }
   });
 
   // Vite middleware for development
