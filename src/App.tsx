@@ -84,7 +84,7 @@ const Navbar = ({ isAdmin, setIsAdmin, cartCount, onCartClick, onLogout }: {
   <nav className="sticky top-0 z-50 bg-white/80 backdrop-blur-md border-bottom border-zinc-100 px-6 py-4 flex items-center justify-between">
     <div className="flex items-center gap-2">
       <div className="w-10 h-10 bg-emerald-600 rounded-xl flex items-center justify-center text-white font-bold text-xl">L</div>
-      <h1 className="text-xl font-bold tracking-tight text-zinc-900">Logeachi<span className="text-emerald-600">.com</span></h1>
+      <h1 className="text-xl font-bold tracking-tight text-zinc-900">Logeachi<span className="hidden sm:inline text-emerald-600">.com</span></h1>
     </div>
     
     <div className="flex items-center gap-4">
@@ -359,7 +359,7 @@ const AdminDashboard = () => {
 
       {activeTab === 'stats' && analytics && (
         <div className="space-y-8">
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
             <div className="bg-white p-6 rounded-3xl border border-zinc-100 shadow-sm">
               <div className="w-12 h-12 bg-emerald-50 text-emerald-600 rounded-2xl flex items-center justify-center mb-4">
                 <DollarSign size={24} />
@@ -374,7 +374,7 @@ const AdminDashboard = () => {
               <p className="text-sm font-medium text-zinc-500 uppercase tracking-wider">Total Profit</p>
               <h3 className="text-3xl font-bold text-zinc-900 mt-1">৳{analytics.total_profit.toLocaleString()}</h3>
             </div>
-            <div className="bg-white p-6 rounded-3xl border border-zinc-100 shadow-sm">
+            <div className="bg-white p-6 rounded-3xl border border-zinc-100 shadow-sm sm:col-span-2 lg:col-span-1">
               <div className="w-12 h-12 bg-purple-50 text-purple-600 rounded-2xl flex items-center justify-center mb-4">
                 <ShoppingBag size={24} />
               </div>
@@ -383,10 +383,10 @@ const AdminDashboard = () => {
             </div>
           </div>
 
-          <div className="bg-white p-8 rounded-3xl border border-zinc-100 shadow-sm overflow-hidden">
+          <div className="bg-white p-6 md:p-8 rounded-3xl border border-zinc-100 shadow-sm overflow-hidden">
             <h3 className="text-lg font-bold mb-6">Daily Performance (Last 7 Days)</h3>
-            <div className="overflow-x-auto">
-              <table className="w-full text-left">
+            <div className="overflow-x-auto -mx-6 px-6 md:mx-0 md:px-0">
+              <table className="w-full text-left min-w-[500px]">
                 <thead>
                   <tr className="border-b border-zinc-100">
                     <th className="pb-4 font-bold text-zinc-400 text-xs uppercase tracking-wider">Date</th>
@@ -406,10 +406,10 @@ const AdminDashboard = () => {
                   ))}
                 </tbody>
               </table>
-              {analytics.recentSales.length === 0 && (
-                <p className="text-center text-zinc-400 py-12">No sales data yet.</p>
-              )}
             </div>
+            {analytics.recentSales.length === 0 && (
+              <p className="text-center text-zinc-400 py-12">No sales data yet.</p>
+            )}
           </div>
         </div>
       )}
@@ -557,56 +557,58 @@ const AdminDashboard = () => {
           
           <div className="lg:col-span-2">
             <div className="bg-white rounded-3xl border border-zinc-100 shadow-sm overflow-hidden">
-              <table className="w-full text-left border-collapse">
-                <thead>
-                  <tr className="bg-zinc-50 border-b border-zinc-100">
-                    <th className="px-6 py-4 text-xs font-bold text-zinc-400 uppercase">Product</th>
-                    <th className="px-6 py-4 text-xs font-bold text-zinc-400 uppercase">Price</th>
-                    <th className="px-6 py-4 text-xs font-bold text-zinc-400 uppercase">Stock</th>
-                    <th className="px-6 py-4 text-xs font-bold text-zinc-400 uppercase text-right">Action</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-zinc-100">
-                  {products.map(product => (
-                    <tr key={product.id} className="hover:bg-zinc-50 transition-colors">
-                      <td className="px-6 py-4">
-                        <div className="flex items-center gap-3">
-                          <img 
-                            src={product.image_url || `https://picsum.photos/seed/${product.id}/50/50`} 
-                            className="w-10 h-10 rounded-lg object-cover"
-                            referrerPolicy="no-referrer"
-                          />
-                          <span className="font-medium text-zinc-900">{product.name}</span>
-                        </div>
-                      </td>
-                      <td className="px-6 py-4 font-medium">৳{product.price}</td>
-                      <td className="px-6 py-4">
-                        <span className={`px-2 py-1 rounded-md text-xs font-bold ${product.stock > 10 ? 'bg-emerald-50 text-emerald-600' : 'bg-red-50 text-red-600'}`}>
-                          {product.stock} left
-                        </span>
-                      </td>
-                      <td className="px-6 py-4 text-right">
-                        <div className="flex items-center justify-end gap-2">
-                          <button 
-                            onClick={() => handleEditClick(product)}
-                            className="p-2 text-zinc-400 hover:text-amber-600 transition-colors"
-                            title="Edit Product"
-                          >
-                            <Edit2 size={18} />
-                          </button>
-                          <button 
-                            onClick={() => handleDeleteProduct(product.id)}
-                            className="p-2 text-zinc-400 hover:text-red-600 transition-colors"
-                            title="Delete Product"
-                          >
-                            <Trash2 size={18} />
-                          </button>
-                        </div>
-                      </td>
+              <div className="overflow-x-auto -mx-6 px-6 md:mx-0 md:px-0">
+                <table className="w-full text-left border-collapse min-w-[500px]">
+                  <thead>
+                    <tr className="bg-zinc-50 border-b border-zinc-100">
+                      <th className="px-6 py-4 text-xs font-bold text-zinc-400 uppercase">Product</th>
+                      <th className="px-6 py-4 text-xs font-bold text-zinc-400 uppercase">Price</th>
+                      <th className="px-6 py-4 text-xs font-bold text-zinc-400 uppercase">Stock</th>
+                      <th className="px-6 py-4 text-xs font-bold text-zinc-400 uppercase text-right">Action</th>
                     </tr>
-                  ))}
-                </tbody>
-              </table>
+                  </thead>
+                  <tbody className="divide-y divide-zinc-100">
+                    {products.map(product => (
+                      <tr key={product.id} className="hover:bg-zinc-50 transition-colors">
+                        <td className="px-6 py-4">
+                          <div className="flex items-center gap-3">
+                            <img 
+                              src={product.image_url || `https://picsum.photos/seed/${product.id}/50/50`} 
+                              className="w-10 h-10 rounded-lg object-cover"
+                              referrerPolicy="no-referrer"
+                            />
+                            <span className="font-medium text-zinc-900">{product.name}</span>
+                          </div>
+                        </td>
+                        <td className="px-6 py-4 font-medium">৳{product.price}</td>
+                        <td className="px-6 py-4">
+                          <span className={`px-2 py-1 rounded-md text-xs font-bold ${product.stock > 10 ? 'bg-emerald-50 text-emerald-600' : 'bg-red-50 text-red-600'}`}>
+                            {product.stock} left
+                          </span>
+                        </td>
+                        <td className="px-6 py-4 text-right">
+                          <div className="flex items-center justify-end gap-2">
+                            <button 
+                              onClick={() => handleEditClick(product)}
+                              className="p-2 text-zinc-400 hover:text-amber-600 transition-colors"
+                              title="Edit Product"
+                            >
+                              <Edit2 size={18} />
+                            </button>
+                            <button 
+                              onClick={() => handleDeleteProduct(product.id)}
+                              className="p-2 text-zinc-400 hover:text-red-600 transition-colors"
+                              title="Delete Product"
+                            >
+                              <Trash2 size={18} />
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
               {products.length === 0 && (
                 <div className="p-12 text-center text-zinc-400">No products found.</div>
               )}
@@ -817,7 +819,7 @@ const CustomerView = ({ onAddToCart }: { onAddToCart: (p: Product) => void }) =>
   return (
     <div className="p-6 max-w-7xl mx-auto">
       {/* Hero Section */}
-      <div className="relative h-[400px] rounded-[40px] overflow-hidden mb-12 bg-zinc-900">
+      <div className="relative h-[300px] md:h-[400px] rounded-[30px] md:rounded-[40px] overflow-hidden mb-12 bg-zinc-900">
         <img 
           src="https://picsum.photos/seed/shopping/1920/1080" 
           className="w-full h-full object-cover opacity-50"
